@@ -39,7 +39,6 @@ class TodoeyTableViewController: UITableViewController {
     }
     
     
-    //////////////////////////////////////////////////////////////////
     //MARK: - Delegate Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         print(items[indexPath.item])
@@ -54,6 +53,30 @@ class TodoeyTableViewController: UITableViewController {
         }
     }
     
+    
+    //MARK: - Add Button Functionality
+    @IBAction func addAnItem(_ sender: Any) {
+        
+        let alert = UIAlertController(title: "Add an Item to the List", message: nil, preferredStyle: .alert)
+        var gtextField = UITextField()
+        
+  
+        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            print("Success")
+            print(gtextField.text!)
+            self.items.append(gtextField.text!)
+            self.tableView.reloadData()
+     
+        }
+        alert.addTextField { (textField) in
+            gtextField = textField
+            gtextField.placeholder = "Create a new item"
+            
+        }
+
+        alert.addAction(action)
+        present(alert, animated: true, completion: nil)
+    }
     
 
 }
