@@ -112,9 +112,19 @@ class TodoeyTableViewController: UITableViewController {
     }
     
     //Load items from the database
-    func loadItems(with request: NSFetchRequest<Item> = NSFetchRequest.init(entityName: "Item")){
-        print(selectedCategory!.name!)
-        request.predicate = NSPredicate.init(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+    func loadItems(with request: NSFetchRequest<Item> = NSFetchRequest.init(entityName: "Item"), additionalPredicate searchPredicate : NSPredicate? = nil){
+        
+        let categoryPredicate = NSPredicate.init(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        if let predicate = searchPredicate{
+            let compoundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate,predicate])
+            request.predicate = compoundPredicate
+        }
+        else{
+            request.predicate = categoryPredicate
+        }
+        
+        
         do{
             items = try context.fetch(request)
             print(items)
@@ -137,7 +147,7 @@ extension TodoeyTableViewController : UISearchBarDelegate{
         request.predicate = NSPredicate.init(format: "itemName CONTAINS[cd] %@", searchBar.text!)
         request.sortDescriptors = [NSSortDescriptor.init(key: "itemName", ascending: true)]
 
-        loadItems(with: request)
+        loadItems(with: request,additionalPredicate: request.predicate)
         
         tableView.reloadData()
     }
