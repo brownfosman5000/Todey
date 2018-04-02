@@ -7,21 +7,26 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoeyTableViewController: UITableViewController {
 
     var items = [Item]()
-    let defaults = UserDefaults.standard
-    let itemsFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last?.appendingPathComponent("Items.plist")
-   
+    //let defaults = UserDefaults.standard
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    
+    var selectedCategory: Category? {
+        didSet{
+            loadItems()
+        }
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         loadItems()
         
-//        if let itemArray = defaults.array(forKey: "TodeyList") as? [Item]{
-//            items = itemArray
-//        }
+        //print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
 
 
     }
@@ -34,7 +39,7 @@ class TodoeyTableViewController: UITableViewController {
     
     
     // MARK: - DataSource Methods
-    
+    //Populate table with cell title and checkmark if provided
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
         let item = items[indexPath.row]
@@ -52,12 +57,15 @@ class TodoeyTableViewController: UITableViewController {
     
     
     //MARK: - Delegate Methods
+    // Perform operations on whichever row was selected
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
 
         items[indexPath.row].done = !items[indexPath.row].done
         saveItems()
+        
         tableView.deselectRow(at: indexPath, animated: true)
+        
         tableView.reloadData()
     }
     
@@ -70,13 +78,12 @@ class TodoeyTableViewController: UITableViewController {
         
   
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
-            print("Success")
             
-            let newItem = Item()
+            let newItem = Item(context: self.context)
             
             newItem.itemName = gtextField.text!
             self.items.append(newItem)
-            
+            newItem.parentCategory = self.selectedCategory
             self.tableView.reloadData()
             
             self.saveItems()
@@ -93,31 +100,56 @@ class TodoeyTableViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
+    //Save items in a database core data
     func saveItems(){
-        let encoder = PropertyListEncoder()
         do{
-            let data = try encoder.encode(self.items)
-            try data.write(to: self.itemsFilePath!)
+            try context.save()
         }
         catch{
-            print("Problem encoding data: \(error)")
+            print("Saving Error: \(error)")
+        
         }
     }
     
-    func loadItems(){
-        if let data = try? Data(contentsOf: itemsFilePath!){
-            let decoder = PropertyListDecoder()
-            do{
-                items = try decoder.decode([Item].self, from: data)
-                
-            }
-            catch{
-                print("Failed to decode: \(error)")
-            }
+    //Load items from the database
+    func loadItems(with request: NSFetchRequest<Item> = NSFetchRequest.init(entityName: "Item")){
+        print(selectedCategory!.name!)
+        request.predicate = NSPredicate.init(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        do{
+            items = try context.fetch(request)
+            print(items)
+        }catch{
+            print("Error loading database \(error) ")
         }
-
+        tableView.reloadData()
     }
     
+    
 
+}
+
+extension TodoeyTableViewController : UISearchBarDelegate{
+    
+    //When search button clicked search and sort the results in an ascending order
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request: NSFetchRequest<Item> = NSFetchRequest.init(entityName: "Item")
+        
+        request.predicate = NSPredicate.init(format: "itemName CONTAINS[cd] %@", searchBar.text!)
+        request.sortDescriptors = [NSSortDescriptor.init(key: "itemName", ascending: true)]
+
+        loadItems(with: request)
+        
+        tableView.reloadData()
+    }
+    
+    //When text is null after search then load the items in and close keyboard
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0{
+            loadItems()
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+        }
+    }
 }
 
