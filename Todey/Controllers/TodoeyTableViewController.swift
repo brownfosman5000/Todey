@@ -7,14 +7,12 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class TodoeyTableViewController: UITableViewController {
 
-    var items = [Item]()
-    //let defaults = UserDefaults.standard
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-    
+    let realm = try! Realm()
+    var toDoListItems: Results<Item>?
     var selectedCategory: Category? {
         didSet{
             loadItems()
@@ -24,11 +22,6 @@ class TodoeyTableViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        loadItems()
-        
-        //print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
-
-
     }
 
     override func didReceiveMemoryWarning() {
@@ -42,17 +35,21 @@ class TodoeyTableViewController: UITableViewController {
     //Populate table with cell title and checkmark if provided
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
-        let item = items[indexPath.row]
         
-        cell.textLabel?.text = items[indexPath.row].itemName
-        cell.accessoryType = item.done ? .checkmark : .none
+        if let item = toDoListItems?[indexPath.row]{
+            cell.textLabel?.text = item.title
+            cell.accessoryType = item.done ? .checkmark : .none
+        }
+        else{
+            cell.textLabel?.text = "No items added"
+        }
 
         return cell
         
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return items.count
+        return toDoListItems?.count ?? 1
     }
     
     
@@ -60,77 +57,60 @@ class TodoeyTableViewController: UITableViewController {
     // Perform operations on whichever row was selected
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        
+        do{
+            try realm.write {
+                if let item = toDoListItems?[indexPath.row]{
+                    item.done = !item.done
+                }
+            }
+        }catch{
+            print("Error toggling checkmark \(error)")
+        }
 
-        items[indexPath.row].done = !items[indexPath.row].done
-        saveItems()
-        
-        tableView.deselectRow(at: indexPath, animated: true)
-        
         tableView.reloadData()
     }
     
     
     //MARK: - Add Button Functionality
     @IBAction func addAnItem(_ sender: Any) {
-        
+
         let alert = UIAlertController(title: "Add an Item to the List", message: nil, preferredStyle: .alert)
         var gtextField = UITextField()
-        
-  
+
+
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+
+            let newItem = Item()
             
-            let newItem = Item(context: self.context)
+            do{
+                try self.realm.write {
+                    newItem.title = gtextField.text!
+                    newItem.dateCreated = Date()
+                    self.selectedCategory?.items.append(newItem)
+                    self.realm.add(newItem)
+                }
+            }catch{
+                print("Error writing to Realm Database \(error)")
+            }
             
-            newItem.itemName = gtextField.text!
-            self.items.append(newItem)
-            newItem.parentCategory = self.selectedCategory
             self.tableView.reloadData()
-            
-            self.saveItems()
-            
-            //self.defaults.set(self.items, forKey: "TodeyList")
+
         }
         alert.addTextField { (textField) in
             gtextField = textField
             gtextField.placeholder = "Create a new item"
-            
+
         }
 
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
     }
-    
-    //Save items in a database core data
-    func saveItems(){
-        do{
-            try context.save()
-        }
-        catch{
-            print("Saving Error: \(error)")
-        
-        }
-    }
+
     
     //Load items from the database
-    func loadItems(with request: NSFetchRequest<Item> = NSFetchRequest.init(entityName: "Item"), additionalPredicate searchPredicate : NSPredicate? = nil){
-        
-        let categoryPredicate = NSPredicate.init(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
-        
-        if let predicate = searchPredicate{
-            let compoundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate,predicate])
-            request.predicate = compoundPredicate
-        }
-        else{
-            request.predicate = categoryPredicate
-        }
-        
-        
-        do{
-            items = try context.fetch(request)
-            print(items)
-        }catch{
-            print("Error loading database \(error) ")
-        }
+    func loadItems(){
+        toDoListItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
         tableView.reloadData()
     }
     
@@ -139,19 +119,14 @@ class TodoeyTableViewController: UITableViewController {
 }
 
 extension TodoeyTableViewController : UISearchBarDelegate{
-    
+
     //When search button clicked search and sort the results in an ascending order
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        let request: NSFetchRequest<Item> = NSFetchRequest.init(entityName: "Item")
         
-        request.predicate = NSPredicate.init(format: "itemName CONTAINS[cd] %@", searchBar.text!)
-        request.sortDescriptors = [NSSortDescriptor.init(key: "itemName", ascending: true)]
-
-        loadItems(with: request,additionalPredicate: request.predicate)
-        
+        toDoListItems = toDoListItems?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "dateCreated", ascending: true)
         tableView.reloadData()
     }
-    
+
     //When text is null after search then load the items in and close keyboard
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchBar.text?.count == 0{

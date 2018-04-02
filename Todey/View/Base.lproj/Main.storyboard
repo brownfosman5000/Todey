@@ -12,7 +12,7 @@
         <!--Todey-->
         <scene sceneID="sfc-5J-uuo">
             <objects>
-                <tableViewController id="ZyU-Yf-Hpc" customClass="CategoryTableViewController" customModule="Todey" customModuleProvider="target" sceneMemberID="viewController">
+                <tableViewController id="ZyU-Yf-Hpc" customClass="CategoryTableViewController" customModule="Todey" sceneMemberID="viewController">
                     <tableView key="view" clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="28" sectionFooterHeight="28" id="gh4-Zs-DFj">
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -50,7 +50,7 @@
         <!--Items-->
         <scene sceneID="95W-l5-l2n">
             <objects>
-                <tableViewController id="vEG-bE-Lo9" customClass="TodoeyTableViewController" customModule="Todey" customModuleProvider="target" sceneMemberID="viewController">
+                <tableViewController id="vEG-bE-Lo9" customClass="TodoeyTableViewController" customModule="Todey" sceneMemberID="viewController">
                     <tableView key="view" clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="28" sectionFooterHeight="28" id="hlV-nv-B7c">
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
